@@ -13,59 +13,87 @@ networks:
     driver: bridge
 
 services:
-  elasticsearch:
-    container_name: zencrepes_elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.2
-    environment:
-      - discovery.type=single-node
-    ports:
-      - '9200:9200'
+  redis:
+    container_name: redis
+    image: redis:latest
     networks:
       - zstack
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    ports:
+      - '9200:9200'
+    environment:
+      - discovery.type=single-node
+    networks:
+      - zstack
+
+  # Kibana is only present there for debugging to provide a quick way to look at the data
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.7.0
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - '5601:5601'
+    networks:
+      - zstack
+    depends_on:
+      - elasticsearch
 
   zindexer:
     container_name: zindexer
     image: zencrepes/zindexer:latest
     environment:
-      - 'CONFIG_DIR=/root/zencrepes-data'
+      - 'CONFIG_DIR=/root/zencrepes'
     volumes:
-      - data-volume:/root/zencrepes-data
+      - data-volume:/root/zencrepes
     networks:
       - zstack
     depends_on:
       - elasticsearch
 
   zapi:
-    container_name: zencrepes_zapi
+    container_name: zapi
     image: zencrepes/zapi:latest
     ports:
       - '5001:3001'
+      - '3001:3001'
     environment:
-      - 'CONFIG_PATH=/root/zencrepes-data'
-      - 'ELASTICSEARCH_NODE=http://elasticsearch:9200'
+      - 'CONFIG_PATH=/root/zencrepes'
+    volumes:
+      - data-volume:/root/zencrepes
     networks:
       - zstack
     depends_on:
       - elasticsearch
 
+  zqueue:
+    container_name: zqueue
+    image: zencrepes/zqueue:latest
+    ports:
+      - '3003:3003'
+    environment:
+      - 'CONFIG_PATH=/root/zencrepes'
+    volumes:
+      - data-volume:/root/zencrepes
+    networks:
+      - zstack
+    depends_on:
+      - elasticsearch
+      - redis
+
   zui:
-    container_name: zencrepes_zui
+    container_name: zui
     image: zencrepes/zui:latest
     environment:
       - 'API_URL=http://127.0.0.1:5001/graphql'
       - 'KEYCLOAK_DISABLED=true'
-    ports:
-      - '8080:80'
-    depends_on:
-      - elasticsearch
-
-  # Kibana is only present there for debugging to provide a quick way to look at the data
-  kibana:
-    container_name: zencrepes_kibana
-    image: docker.elastic.co/kibana/kibana:7.6.2
-    ports:
-      - '5601:5601'
     networks:
       - zstack
+    ports:
+      - '8080:80'
     depends_on:
       - elasticsearch
