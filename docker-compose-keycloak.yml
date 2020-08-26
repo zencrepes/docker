@@ -106,6 +106,9 @@ services:
       - 'ROOT_URL=http://localhost:3000'
       - 'KEYCLOAK_DISABLED=false'
       - 'KEYCLOAK_AUTH_SERVER_URL=http://zc_keycloak:8080/auth/'
+      - 'KEYCLOAK_AUDIENCE=http://localhost:3000'
+      - 'KEYCLOAK_REALM=ZenCrepes'
+      - 'KEYCLOAK_CLIENT_ID=zencrepes'
     networks:
       - zc_stack
     ports:
